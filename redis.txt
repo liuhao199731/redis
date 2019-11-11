@@ -1,0 +1,303 @@
+安装
+sudo apt-get install redis-server
+服务端启动
+sudo /etc/init.d/redis-server status | start | stop | restart
+客户端连接
+redis-cli -h IP地址 -p 6379 -a 密码
+
+修改密码:
+1.进入 /etc/redis/redis.conf	sudo su		vi redis.conf
+requirepass 修改密码
+2.保存退出后重启服务
+   sudo /etc/init.d/redis-server restart
+3、客户端连接
+   redis-cli -h 127.0.0.1 -p 6379 -a 123456
+   127.0.0.1:6379>ping
+
+设置允许远程链接
+1、注释掉本地IP地址绑定
+  69行: # bind 127.0.0.1 ::1
+2、关闭保护模式(把yes改为no)
+  88行: protected-mode no
+3、重启服务
+  sudo /etc/init.d/redis-server restart
+
+python连接redis
+import redis
+r = redis.Redis(host='127.0.0.1',port=6379,db=0,password=123456)
+
+
+
+
+通用命令(适用于所有数据类型)
+# 切换库(number的值在0-15之间,db0 ~ db15)
+select number
+# 查看键
+keys 表达式  # keys *
+# 数据类型
+TYPE key
+# 键是否存在
+exists key
+# 删除键
+del key
+# 键重命名
+rename key newkey
+# 清除当前库中所有数据（慎用）
+flushdb
+# 清除所有库中所有数据（慎用）
+flushall
+
+*************************************************
+一.字符串类型
+# 1. 设置一个key-value
+set key value
+# 2. 获取key的值
+get key
+# 3. key不存在时再进行设置(nx)
+set key value nx  # not exists
+# 4. 设置过期时间(ex)
+set key value ex seconds
+# 5. 同时设置多个key-value
+mset key1 value1 key2 value2 key3 value3
+# 6. 同时获取多个key-value
+mget key1 key2 key3 
+# 7. 返回旧值并设置新值（如果键不存在，就创建并赋值）
+getset key value
+
+# 1.获取长度
+strlen key
+# 2.获取指定范围切片内容
+getrange key start stop
+# 3.从索引值开始，value替换原内容
+setrange key index value
+# 4.追加拼接value的值
+append key value
+
+数值操作
+INCRBY key 步长 : +n操作
+DECRBY key 步长 : -n操作
+INCR key : +1操作
+DECR key : -1操作
+incrbyfloat key step :浮点型+-操作
+
+# 查看存活时间
+ttl key
+# 删除过期
+persist key
+
+*************************************************
+二.列表数据类型
+# 增
+1、从列表头部压入元素
+	LPUSH key value1 value2 
+2、从列表尾部压入元素
+	RPUSH key value1 value2
+3、从列表src尾部弹出1个元素,压入到列表dst的头部
+	RPOPLPUSH src dst
+4、在列表指定元素后/前插入元素
+	LINSERT key after|before value newvalue
+
+# 查
+5、查看列表中元素
+	LRANGE key start stop
+  # 查看列表中所有元素: LRANGE key 0 -1
+6、获取列表长度
+	LLEN key
+
+# 删
+7、从列表头部弹出1个元素
+	LPOP key
+8、从列表尾部弹出1个元素
+	RPOP key
+9、列表头部,阻塞弹出,列表为空时阻塞
+	BLPOP key timeout
+10、列表尾部,阻塞弹出,列表为空时阻塞
+	BRPOP key timeout
+  	# 关于BLPOP 和 BRPOP
+  	1、如果弹出的列表不存在或者为空，就会阻塞
+		2、超时时间设置为0，就是永久阻塞，直到有数据可以弹出
+		3、如果多个客户端阻塞再同一个列表上，使用First In First Service原则，先到先服务
+11、删除指定元素
+	LREM key count value
+  	count>0：表示从头部开始向表尾搜索，移除与value相等的元素，数量为count
+	count<0：表示从尾部开始向表头搜索，移除与value相等的元素，数量为count
+	count=0：移除表中所有与value相等的值
+12、保留指定范围内的元素
+	LTRIM key start stop
+	  LRTIM mylist1 0 2 # 只保留前3条
+	  # 应用场景: 保存微博评论最后500条
+	  LTRIM weibo:comments 0 499
+
+# 改
+13、LSET key index newvalue
+
+
+位图操作
+# 设置某一位上的值（offset是偏移量，从0开始）
+setbit key offset value
+# 获取某一位上的值
+GETBIT key offset
+# 统计键所对应的值中有多少个 1 
+BITCOUNT key
+
+*************************************************
+三.Hash散列数据类型
+# 1、设置单个字段
+HSET key field value
+HSETNX key field value
+# 2、设置多个字段
+HMSET key field value field value
+# 3、返回字段个数
+HLEN key
+# 4、判断字段是否存在（不存在返回0）
+HEXISTS key field
+# 5、返回字段值
+HGET key field
+# 6、返回多个字段值
+HMGET key field filed
+# 7、返回所有的键值对
+HGETALL key
+# 8、返回所有字段名
+HKEYS key
+# 9、返回所有值
+HVALS key
+# 10、删除指定字段
+HDEL key field 
+# 11、在字段对应值上进行整数增量运算
+HINCRBY key filed increment
+# 12、在字段对应值上进行浮点数增量运算
+HINCRBYFLOAT key field increment
+
+Hash与python交互
+# 1、更新一条数据的属性，没有则新建
+hset(name, key, value) 
+# 2、读取这条数据的指定属性， 返回字符串类型
+hget(name, key)
+# 3、批量更新数据（没有则新建）属性,参数为字典
+hmset(name, mapping)
+# 4、批量读取数据（没有则新建）属性
+hmget(name, keys)
+# 5、获取这条数据的所有属性和对应的值，返回字典类型
+hgetall(name)
+# 6、获取这条数据的所有属性名，返回列表类型
+hkeys(name)
+# 7、删除这条数据的指定属性
+hdel(name, *keys)
+
+*************************************************
+四.集合数据类型
+# 1、增加一个或者多个元素,自动去重
+SADD key member1 member2
+# 2、查看集合中所有元素
+SMEMBERS key
+# 3、删除一个或者多个元素，元素不存在自动忽略
+SREM key member1 member2
+# 4、元素是否存在
+SISMEMBER key member
+# 5、随机返回集合中指定个数的元素，默认为1个
+SRANDMEMBER key [count]
+# 6、弹出成员
+SPOP key [count]
+# 7、返回集合中元素的个数，不会遍历整个集合，只是存储在键当中了
+SCARD key
+# 8、把元素从源集合移动到目标集合
+SMOVE source destination member
+# 9、差集(number1 1 2 3 number2 1 2 4 结果为3)
+SDIFF key1 key2 
+# 10、差集保存到另一个集合中
+SDIFFSTORE destination key1 key2
+# 11、交集
+SINTER key1 key2
+SINTERSTORE destination key1 key2
+# 11、并集
+SUNION key1 key2
+SUNIONSTORE destination key1 key2
+
+*************************************************
+五.有序集合
+# 在有序集合中添加一个成员
+zadd key score member
+# 查看指定区间元素（升序)
+zrange key start stop [withscores]
+# 查看指定区间元素（降序）
+ZREVRANGE key start stop [withscores]
+# 查看指定元素的分值
+ZSCORE key member
+
+# 返回指定区间元素
+# offset : 跳过多少个元素
+# count : 返回几个
+# 小括号 : 开区间  zrangebyscore fruits (2.0 8.0
+zrangebyscore key min max [withscores] [limit offset count]
+# 每页显示10个成员,显示第5页的成员信息: 
+# limit 40 10
+# MySQL: 每页显示10条记录,显示第5页的记录
+# limit 40,10
+# limit 2,3   显示: 第3 4 5条记录
+
+# 删除成员
+zrem key member
+# 增加或者减少分值
+zincrby key increment member
+# 返回元素排名
+zrank key member
+# 返回元素逆序排名
+zrevrank key member
+# 删除指定区间内的元素
+zremrangebyscore key min max
+# 返回集合中元素个数
+zcard key
+# 返回指定范围中元素的个数
+zcount key min max
+zcount salary 6000 8000 
+zcount salary (6000 8000# 6000<salary<=8000
+zcount salary (6000 (8000#6000<salary<8000               
+# 并集
+zunionstore destination numkeys key [weights 权重值] [AGGREGATE SUM|MIN|MAX]
+# zunionstore salary3 2 salary salary2 weights 1 0.5 AGGREGATE MAX
+# 2代表集合数量,weights之后 权重1给salary,权重0.5给salary2集合,算完权重之后执行聚合AGGREGATE
+                     
+# 交集：和并集类似，只取相同的元素
+ZINTERSTORE destination numkeys key1 key2 WEIGHTS weight AGGREGATE SUM(默认)|MIN|MAX
+
+
+*************************************************
+配置文件总结：
+# 设置密码
+1、requirepass password
+# 开启远程连接
+2、bind 127.0.0.1 ::1 注释掉
+3、protected-mode no  把默认的 yes 改为 no
+# rdb持久化-默认配置
+4、dbfilename 'dump.rdb'
+5、dir /var/lib/redis
+# rdb持久化-自动触发(条件)
+6、save 900 1
+7、save 300 10 
+8、save 60  10000
+# aof持久化开启
+9、appendonly yes
+10、appendfilename 'appendonly.aof'
+# aof持久化策略
+11、appendfsync always
+12、appendfsync everysec # 默认
+13、appendfsync no
+# aof重写触发
+14、auto-aof-rewrite-percentage 100
+15、auto-aof-rewrite-min-size 64mb
+# 设置为从服务器
+16、salveof <master-ip> <master-port>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
